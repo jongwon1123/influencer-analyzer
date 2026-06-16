@@ -519,11 +519,11 @@
       <div class="cpv-grid">
         <div class="cpv-input-row">
           <label>협의 단가 (원)</label>
-          <input class="cpv-input" id="cpvCost" type="number" placeholder="예: 500000" oninput="calcCpv()" />
+          <input class="cpv-input" id="cpvCost" type="text" inputmode="numeric" placeholder="예: 500,000" oninput="fmtInput(this); calcCpv()" />
         </div>
         <div class="cpv-input-row">
           <label>기준 예상 조회수</label>
-          <input class="cpv-input" id="cpvViews" type="number" placeholder="자동입력됨 (수정 가능)" oninput="calcCpv()" />
+          <input class="cpv-input" id="cpvViews" type="text" inputmode="numeric" placeholder="자동입력됨 (수정 가능)" oninput="fmtInput(this); calcCpv()" />
         </div>
       </div>
       <div class="cpv-result">
@@ -800,16 +800,27 @@
 
     // CPV 기준 조회수 (일반 영상 평균 우선)
     const baseViews = regularViews.length ? avg(regularViews) : avg(allViews);
-    document.getElementById('cpvViews').value = baseViews;
+    document.getElementById('cpvViews').value = baseViews.toLocaleString();
     calcCpv();
 
     document.getElementById('result').style.display = 'block';
     document.getElementById('result').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
+  // 입력 필드 콤마 자동 포맷
+  function fmtInput(el) {
+    const raw = el.value.replace(/[^0-9]/g, '');
+    el.value = raw ? parseInt(raw).toLocaleString() : '';
+  }
+
+  // 입력값에서 숫자만 추출
+  function rawNum(id) {
+    return parseFloat(document.getElementById(id).value.replace(/,/g, '')) || 0;
+  }
+
   function calcCpv() {
-    const cost = parseFloat(document.getElementById('cpvCost').value);
-    const views = parseFloat(document.getElementById('cpvViews').value);
+    const cost  = rawNum('cpvCost');
+    const views = rawNum('cpvViews');
     if (cost > 0 && views > 0) {
       const cpv = Math.round(cost / views * 100) / 100;
       document.getElementById('cpvResult').textContent = cpv.toLocaleString() + '원';
@@ -828,6 +839,7 @@
     const avgS = document.getElementById('avgShorts').textContent;
     const cpv = document.getElementById('cpvResult').textContent;
     const cost = document.getElementById('cpvCost').value;
+    const costNum = rawNum('cpvCost');
     const email = document.getElementById('chEmail').textContent;
 
     const text = `[인플루언서 분석 결과]
@@ -837,7 +849,7 @@
 최근 10개 평균 조회수: ${avg}
   ├ 일반 영상: ${avgR}
   └ Shorts: ${avgS}
-협의 단가: ${cost ? parseInt(cost).toLocaleString()+'원' : '미입력'}
+협의 단가: ${costNum ? costNum.toLocaleString()+'원' : '미입력'}
 예측 CPV: ${cpv}
 분석일: ${new Date().toLocaleDateString('ko-KR')}`;
 
