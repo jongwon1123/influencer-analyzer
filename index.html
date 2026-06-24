@@ -605,13 +605,17 @@
     return m ? m[0] : '—';
   }
 
-  function isShorts(duration) {
-    // PT#S 형태 (60초 이하) 또는 PT1M 이하
+  function isShorts(duration, publishedAt) {
     if (!duration) return false;
     const m = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
     if (!m) return false;
     const h = parseInt(m[1]||0), min = parseInt(m[2]||0), s = parseInt(m[3]||0);
-    return (h*3600 + min*60 + s) <= 60;
+    const totalSec = h*3600 + min*60 + s;
+    if (totalSec <= 0) return false;
+    // 유튜브는 2024-10-15부터 쇼츠 최대 길이를 60초 → 3분(180초)으로 확장함
+    const cutoff = new Date('2024-10-15');
+    const limit = (publishedAt && new Date(publishedAt) < cutoff) ? 60 : 180;
+    return totalSec <= limit;
   }
 
   async function analyze() {
@@ -665,8 +669,8 @@
 
       // 4. 일반/Shorts 분리 후 각 최근 10개
       const allVideos = videos.items;
-      const regularAll = allVideos.filter(v => !isShorts(v.contentDetails.duration));
-      const shortsAll  = allVideos.filter(v =>  isShorts(v.contentDetails.duration));
+      const regularAll = allVideos.filter(v => !isShorts(v.contentDetails.duration, v.snippet.publishedAt));
+      const shortsAll  = allVideos.filter(v =>  isShorts(v.contentDetails.duration, v.snippet.publishedAt));
       const regular10  = regularAll.slice(0, 10);
       const shorts10   = shortsAll.slice(0,  10);
       const combined   = [...regular10, ...shorts10].sort(
@@ -701,7 +705,7 @@
     const views    = parseInt(v.statistics.viewCount    || 0);
     const likes    = parseInt(v.statistics.likeCount    || 0);
     const comments = parseInt(v.statistics.commentCount || 0);
-    const shorts   = isShorts(v.contentDetails.duration);
+    const shorts   = isShorts(v.contentDetails.duration, v.snippet.publishedAt);
     const date     = v.snippet.publishedAt?.slice(0,10) || '';
     const pct      = maxViews > 0 ? (views / maxViews * 100) : 0;
     const paid     = isPaid(v);
